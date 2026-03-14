@@ -366,6 +366,10 @@ body {
   color: rgba(255, 255, 255, 0.15);
 }
 
+#context-container {
+  display: none;
+}
+
 /* ─── GENERATE BUTTON ─── */
 #gen-btn {
   width: 100%;

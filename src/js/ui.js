@@ -76,6 +76,10 @@ export function clearInputs() {
   if (execLogic) execLogic.value = "";
   document.getElementById("answer").innerHTML =
     '<span class="ph">Your answer will appear here — read it naturally…</span>';
+
+  // Clear image previews
+  document.querySelectorAll(".img-preview").forEach((el) => el.remove());
+
   setStatus("● READY");
 }
 
