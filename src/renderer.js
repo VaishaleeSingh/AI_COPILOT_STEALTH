@@ -19,6 +19,10 @@ import {
   addFinal,
   updateInterim,
   clearTranscript,
+  refreshMicList,
+  startSystemAudio,
+  stopSystemAudio,
+  isSystemActive,
 } from "./js/voice.js";
 
 let KEYS = {
@@ -57,8 +61,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Voice
   document.getElementById("mic-btn").onclick = toggleMic;
+  document.getElementById("sys-btn").onclick = toggleSystemAudio;
   document.getElementById("auto-btn").onclick = toggleAutoAnswer;
   document.querySelector(".v-clear").onclick = clearTranscript;
+
+  const micSelect = document.getElementById("mic-select");
+  if (micSelect) {
+    refreshMicList().then(() => {
+      const savedMic = localStorage.getItem("selectedDeviceId");
+      if (savedMic) micSelect.value = savedMic;
+    });
+    micSelect.onchange = () => {
+      localStorage.setItem("selectedDeviceId", micSelect.value);
+    };
+  }
 
   // Generate
   document.getElementById("gen-btn").onclick = generate;
@@ -258,6 +274,25 @@ function toggleMic() {
     inputBeforeDictation = document.getElementById("question").value;
     startMic(async (base64, blob) => {
       await transcribeAudio(base64, blob, "You", KEYS, handleDictationResult);
+      if (autoAnswer && document.getElementById("question").value.trim()) {
+        setTimeout(() => generate(), 400);
+      }
+    });
+  }
+}
+
+function toggleSystemAudio() {
+  if (isSystemActive()) {
+    stopSystemAudio();
+  } else {
+    startSystemAudio(async (base64, blob) => {
+      await transcribeAudio(
+        base64,
+        blob,
+        "Interviewer",
+        KEYS,
+        handleDictationResult,
+      );
       if (autoAnswer && document.getElementById("question").value.trim()) {
         setTimeout(() => generate(), 400);
       }

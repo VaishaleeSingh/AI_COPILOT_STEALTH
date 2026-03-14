@@ -102,6 +102,19 @@ app.whenReady().then(() => {
       callback(allowed.includes(permission));
     },
   );
+    // Handle getDisplayMedia requests for system audio
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+        if (sources.length > 0) {
+          callback({
+            video: sources[0],
+            audio: "loopbackWithGuest", // Optimized for Windows system audio
+          });
+        } else {
+          callback(null);
+        }
+      });
+    });
 });
 
 // IPC: window controls

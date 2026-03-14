@@ -25,16 +25,25 @@
         <!-- Voice Capture -->
         <div>
           <div class="lbl">Voice Capture</div>
-          <div class="voice-row">
-            <button id="mic-btn" class="vbtn">🎤 My Mic</button>
-            <button
-              id="auto-btn"
-              class="vbtn"
-              title="Auto-generate answer when question detected"
-            >
-              ⚡ Auto
-            </button>
-            <button class="vbtn v-clear" title="Clear transcript">🗑</button>
+          <div class="voice-row improved">
+            <div class="capture-btns">
+              <button id="mic-btn" class="vbtn primary" title="Record My Voice">🎤 Mic</button>
+              <button id="sys-btn" class="vbtn secondary" title="Capture Interviewer Audio">🔊 Sys</button>
+            </div>
+          
+            <div class="mic-source">
+              <select id="mic-select" class="mic-dropdown" title="Input Source">
+                <option value="">Default Mic</option>
+              </select>
+              <div id="volume-meter-container">
+                <div id="volume-meter-bar"></div>
+              </div>
+            </div>
+          
+            <div class="action-btns">
+              <button id="auto-btn" class="vbtn-icon" title="Auto-detect questions">⚡</button>
+              <button class="vbtn-icon v-clear" title="Clear transcript">🗑</button>
+            </div>
           </div>
           <div id="voice-status"></div>
           <div id="transcript">

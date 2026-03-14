@@ -3,12 +3,23 @@ import { setStatus, escHtml } from "./ui.js";
 let micActive = false;
 let micStream = null;
 let currentRecorder = null;
+let sysStream = null;
+let sysRecorder = null;
 let recordedChunks = [];
+let sysChunks = [];
 let txEntries = [];
 let interimEntry = null;
+let isSysActive = false;
+let audioCtx = null;
+let analyser = null;
+let volumeInterval = null;
 
 export function isMicActive() {
   return micActive;
+}
+
+export function isSystemActive() {
+  return isSysActive;
 }
 
 export function setVoiceStatus(msg, cls = "") {
@@ -241,55 +252,178 @@ export async function transcribeAudio(
 
 export async function startMic(onFinish) {
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (err) {
-    if (err.name === "NotAllowedError")
-      setVoiceStatus("Mic access denied. Allow and restart.", "err");
-    else if (err.name === "NotFoundError")
-      setVoiceStatus("No mic found.", "err");
-    else setVoiceStatus(`Mic error: ${err.message}`, "err");
-    return;
-  }
+    const micSelect = document.getElementById("mic-select");
+    const selectedDeviceId = micSelect?.value;
+    const constraints = {
+      audio: selectedDeviceId
+        ? {
+            deviceId: { exact: selectedDeviceId },
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: { ideal: 48000 },
+            channelCount: { ideal: 1 },
+          }
+        : {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: { ideal: 48000 },
+            channelCount: { ideal: 1 },
+          },
+    };
 
-  micActive = true;
-  recordedChunks = [];
+    console.log("Requesting mic with constraints:", constraints);
+    micStream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log("Mic stream acquired:", micStream.id);
 
-  const btn = document.getElementById("mic-btn");
-  btn.textContent = "⏹ Stop Mic";
-  btn.classList.add("v-active");
-  setVoiceStatus("🔴 Recording... Click Stop to transcribe.", "");
+    startVolumeMeter(micStream);
+    const track = micStream.getAudioTracks()[0];
+    if (track) {
+      console.log("Track settings:", track.getSettings());
+      console.log("Track constraints:", track.getConstraints());
+    }
 
-  txEntries.push({ speaker: "You", text: "Recording...", interim: true });
-  renderTranscript();
+    micActive = true;
+    recordedChunks = [];
 
-  currentRecorder = new MediaRecorder(micStream, { mimeType: "audio/webm" });
+    const btn = document.getElementById("mic-btn");
+    btn.textContent = "⏹ Stop";
+    btn.classList.add("v-active");
+    setVoiceStatus("🔴 Recording... Click Stop to transcribe.", "");
 
-  currentRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) recordedChunks.push(e.data);
-  };
-
-  currentRecorder.onstop = async () => {
-    const blob = new Blob(recordedChunks, { type: "audio/webm" });
-    setVoiceStatus("⏳ Transcribing audio...", "");
-
-    const base64 = await getBase64(blob);
-    await onFinish(base64, blob);
-
-    txEntries = txEntries.filter((e) => !(e.speaker === "You" && e.interim));
+    txEntries.push({ speaker: "You", text: "Recording...", interim: true });
     renderTranscript();
-  };
 
-  currentRecorder.start();
+    currentRecorder = new MediaRecorder(micStream, {
+      mimeType: "audio/webm; codecs=opus",
+    });
+    console.log("MediaRecorder started with mimeType:", currentRecorder.mimeType);
+
+    currentRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        console.log("Data available:", e.data.size, "bytes");
+        recordedChunks.push(e.data);
+      }
+    };
+
+    currentRecorder.onstop = async () => {
+      console.log("MediaRecorder stopped. Total chunks:", recordedChunks.length);
+      const blob = new Blob(recordedChunks, { type: "audio/webm; codecs=opus" });
+      if (blob.size === 0) {
+        console.warn("Recorded blob is empty!");
+        setVoiceStatus("Empty audio captured.", "vs-warn");
+        return;
+      }
+      console.log("Blob created:", blob.size, "bytes");
+      setVoiceStatus("⏳ Transcribing audio...", "");
+
+      const base64 = await getBase64(blob);
+      await onFinish(base64, blob);
+
+      txEntries = txEntries.filter((e) => !(e.speaker === "You" && e.interim));
+      renderTranscript();
+    };
+
+    currentRecorder.start();
+  } catch (err) {
+    console.error("Mic start failed:", err);
+    setVoiceStatus(`Mic error: ${err.message}`, "err");
+  }
+}
+
+export async function startSystemAudio(onFinish) {
+  try {
+    console.log("Starting system audio capture...");
+    // Attempt to capture with audio only if possible, or video+audio and stop video
+    const constraints = {
+      video: {
+        mandatory: {
+          chromeMediaSource: "desktop",
+        },
+      },
+      audio: {
+        mandatory: {
+          chromeMediaSource: "desktop",
+        },
+      },
+    };
+
+    // Note: getDisplayMedia is preferred in modern Chromium, but Electron 
+    // may need standard getUserMedia with chromeMediaSource for desktop audio fallback.
+    try {
+      sysStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+    } catch (gdmErr) {
+      console.warn("getDisplayMedia failed, trying getUserMedia fallback:", gdmErr);
+      // Fallback for some Electron environments
+      sysStream = await navigator.mediaDevices.getUserMedia(constraints);
+    }
+
+    const audioTrack = sysStream.getAudioTracks()[0];
+    if (!audioTrack) {
+      sysStream.getTracks().forEach((t) => t.stop());
+      throw new Error("No system audio track found. Ensure 'Share Audio' is checked.");
+    }
+
+    // Stop video track since we only want audio
+    sysStream.getVideoTracks().forEach((t) => t.stop());
+
+    isSysActive = true;
+    sysChunks = [];
+
+    const btn = document.getElementById("sys-btn");
+    btn.textContent = "⏹ Stop";
+    btn.classList.add("v-active");
+    setVoiceStatus("🔵 Capturing System Audio...", "");
+
+    sysRecorder = new MediaRecorder(sysStream, {
+      mimeType: "audio/webm;codecs=opus",
+    });
+
+    sysRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) sysChunks.push(e.data);
+    };
+
+    sysRecorder.onstop = async () => {
+      const blob = new Blob(sysChunks, { type: "audio/webm;codecs=opus" });
+      setVoiceStatus("⏳ Transcribing system audio...", "");
+      const base64 = await getBase64(blob);
+      await onFinish(base64, blob);
+    };
+
+    sysRecorder.start();
+
+    audioTrack.onended = () => stopSystemAudio();
+  } catch (err) {
+    console.error("System audio capture failed:", err);
+    setVoiceStatus(`Sys Error: ${err.message}`, "err");
+  }
+}
+
+export function stopSystemAudio() {
+  isSysActive = false;
+  if (sysRecorder && sysRecorder.state !== "inactive") sysRecorder.stop();
+  if (sysStream) sysStream.getTracks().forEach((t) => t.stop());
+
+  const btn = document.getElementById("sys-btn");
+  if (btn) {
+    btn.textContent = "🔊 Sys";
+    btn.classList.remove("v-active");
+  }
 }
 
 export function stopMic() {
   micActive = false;
+  stopVolumeMeter();
   if (currentRecorder && currentRecorder.state !== "inactive")
     currentRecorder.stop();
   if (micStream) micStream.getTracks().forEach((t) => t.stop());
 
   const btn = document.getElementById("mic-btn");
-  btn.textContent = "🎤 My Mic";
+  btn.textContent = "🎤 Mic";
   btn.classList.remove("v-active");
 }
 
@@ -300,4 +434,73 @@ function getBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function startVolumeMeter(stream) {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const bar = document.getElementById("volume-meter-bar");
+
+    volumeInterval = setInterval(() => {
+      if (!micActive) return;
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      const average = sum / bufferLength;
+      const volume = Math.min(100, Math.pow(average / 128, 0.5) * 100);
+      if (bar) bar.style.width = `${volume}%`;
+    }, 50);
+  } catch (err) {
+    console.error("Volume meter error:", err);
+  }
+}
+
+function stopVolumeMeter() {
+  if (volumeInterval) {
+    clearInterval(volumeInterval);
+    volumeInterval = null;
+  }
+  if (audioCtx) {
+    audioCtx.close();
+    audioCtx = null;
+  }
+  const bar = document.getElementById("volume-meter-bar");
+  if (bar) bar.style.width = "0%";
+}
+
+export async function refreshMicList() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter((d) => d.kind === "audioinput");
+    const micSelect = document.getElementById("mic-select");
+    if (!micSelect) return;
+
+    const currentVal = micSelect.value;
+    micSelect.innerHTML = mics
+      .map(
+        (m) =>
+          `<option value="${m.deviceId}" ${m.deviceId === currentVal ? "selected" : ""}>${m.label || "Unknown Mic"}</option>`,
+      )
+      .join("");
+
+    if (!micSelect.innerHTML) {
+      micSelect.innerHTML = '<option value="">No Mic Found</option>';
+    }
+  } catch (err) {
+    console.error("Error refreshing mic list:", err);
+  }
+}
+
+// Auto-refresh on device change
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener("devicechange", refreshMicList);
 }

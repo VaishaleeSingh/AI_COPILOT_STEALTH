@@ -237,7 +237,8 @@ body {
   display: flex;
 }
 
-.lang-sel {
+.lang-sel,
+.mic-sel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -252,10 +253,17 @@ body {
   letter-spacing: 0.05em;
   font-weight: 500;
 }
-.lang-sel:hover {
+.lang-sel:hover,
+.mic-sel:hover {
   background: rgba(120, 220, 180, 0.1);
   color: var(--green);
   border-color: var(--green-dim);
+}
+
+.mic-sel {
+  flex: 2;
+  min-width: 0;
+  height: 28px;
 }
 
 .tools-row {
@@ -604,12 +612,77 @@ body {
 }
 
 /* ─── VOICE CAPTURE ─── */
-.voice-row {
+.voice-row.improved {
   display: flex;
-  gap: 5px;
+  gap: 10px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
 }
-.vbtn {
+.capture-btns {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.capture-btns .vbtn {
+  border: none;
+  border-radius: 0;
+  padding: 6px 10px;
+  font-size: 10px;
+  min-width: 50px;
+}
+
+.capture-btns .vbtn.primary {
+  border-right: 1px solid var(--border);
+}
+
+
+.mic-source {
   flex: 1;
+  display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  
+  .mic-dropdown {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+  }
+  
+  #volume-meter-container {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  
+  #volume-meter-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--green);
+    transition: width 0.1s ease-out;
+    box-shadow: 0 0 8px var(--green);
+  }
+  
+  .action-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+    .vbtn {
   padding: 7px 6px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -632,9 +705,37 @@ body {
   color: #ff7070;
   border-color: rgba(255, 80, 80, 0.35);
 }
-.vbtn.v-clear {
-  flex: 0 0 32px;
-  font-size: 12px;
+.vbtn#sys-btn.v-active {
+  background: rgba(120, 180, 255, 0.1);
+  color: #70b0ff;
+  border-color: rgba(120, 180, 255, 0.35);
+}
+
+.vbtn-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 11px;
+}
+
+.vbtn-icon:hover {
+  background: rgba(120, 220, 180, 0.1);
+  color: var(--green);
+  border-color: var(--green-dim);
+}
+
+.vbtn-icon.v-active {
+  background: rgba(120, 220, 180, 0.15);
+  color: var(--green);
+  border-color: var(--green-dim);
 }
 
 #voice-status {
