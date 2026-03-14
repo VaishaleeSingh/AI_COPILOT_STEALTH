@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * {
+            cursor: none !important;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(0,0,0,0.1); /* Very subtle overlay */
+            user-select: none;
+        }
+        #selection {
+            border: 2px solid #00ff00;
+            background-color: rgba(0, 255, 0, 0.1);
+            position: absolute;
+            display: none;
+            pointer-events: none;
+        }
+        #cursor {
+            width: 24px;
+            height: 24px;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            background: white;
+            clip-path: polygon(0% 0%, 100% 70%, 40% 70%, 0% 100%);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+            transform: rotate(-15deg);
+        }
+    </style>
+</head>
+<body>
+    <div id="selection"></div>
+    <div id="cursor"></div>
+    <script src="snipper.js"></script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview Assistant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Titlebar -->
+      <div id="titlebar">
+        <div class="title-left">
+          <div class="dot"></div>
+          AI COPILOT — STEALTH
+        </div>
+        <div class="win-controls">
+          <button class="wc" title="Minimize (Alt+Space)">−</button>
+          <button class="wc red" title="Hide (Alt+Space)">×</button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div id="body">
+        <!-- Voice Capture -->
+        <div>
+          <div class="lbl">Voice Capture</div>
+          <div class="voice-row">
+            <button id="mic-btn" class="vbtn">🎤 My Mic</button>
+            <button
+              id="auto-btn"
+              class="vbtn"
+              title="Auto-generate answer when question detected"
+            >
+              ⚡ Auto
+            </button>
+            <button class="vbtn v-clear" title="Clear transcript">🗑</button>
+          </div>
+          <div id="voice-status"></div>
+          <div id="transcript">
+            <span class="ph">Live transcript — questions auto-fill below…</span>
+          </div>
+        </div>
+
+        <!-- Tabs and Tools -->
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="standard">Standard</button>
+          <button class="tab-btn" data-tab="code">Code Execution</button>
+        </div>
+
+        <div class="tools-row">
+          <select id="lang-select" class="lang-sel" title="Execution Language">
+            <option value="cpp">C++</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="javascript">JavaScript</option>
+            <option value="go">Go</option>
+          </select>
+
+          <div class="tool-group">
+            <button
+              id="clear-inputs-btn"
+              class="vbtn-small"
+              style="width: 36px; justify-content: center"
+              title="Clear all text boxes"
+            >
+              🗑
+            </button>
+            <button
+              id="snip-btn"
+              class="vbtn-small"
+              style="width: 36px; justify-content: center"
+              title="Snip Text (OCR)"
+            >
+              ✂️
+            </button>
+            <button
+              id="capture-image-btn"
+              class="vbtn-small"
+              style="width: 36px; justify-content: center; background-color: rgba(255,255,255,0.1);"
+              title="Capture Image"
+            >
+              📷
+            </button>
+          </div>
+        </div>
+
+        <!-- Standard Mode Container -->
+        <div id="standard-mode-container" class="mode-container active">
+          <div>
+            <div class="lbl">
+              Interview Question
+              <button
+                class="copy-btn"
+                data-target="question"
+                title="Copy Question"
+              >
+                📋 Copy
+              </button>
+            </div>
+            <textarea
+              id="question"
+              placeholder="Type or paste the question being asked right now…"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Code Mode Container -->
+        <div id="code-mode-container" class="mode-container">
+          <div class="code-box-wrapper">
+            <div class="lbl">EXECUTE CODE</div>
+            <textarea
+              id="exec-code"
+              class="code-textarea"
+              placeholder="Paste the problem statement or code here…"
+            ></textarea>
+          </div>
+          <div class="code-box-wrapper">
+            <div class="lbl">OUTPUT FORMAT</div>
+            <textarea
+              id="exec-output-format"
+              class="code-textarea"
+              placeholder="e.g. class Solution { public: ... }"
+            ></textarea>
+          </div>
+          <div class="code-box-wrapper">
+            <div class="lbl">LOGIC OF CODE</div>
+            <textarea
+              id="exec-logic"
+              class="code-textarea"
+              placeholder="Explain the intended logic or approach"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Context -->
+        <div>
+          <div class="lbl">Your Context (optional)</div>
+          <textarea
+            id="context"
+            placeholder="e.g. SDE-2 at Google, 4 yrs experience, Python/Go…"
+          ></textarea>
+        </div>
+
+        <!-- Generate -->
+        <button id="gen-btn">⚡ Generate Answer (Enter)</button>
+
+        <!-- Answer -->
+        <div>
+          <div class="lbl">
+            Answer
+            <button class="copy-btn" data-target="answer" title="Copy Answer">
+              📋 Copy
+            </button>
+          </div>
+          <div id="answer">
+            <span class="ph"
+              >Your answer will appear here — read it naturally…</span
+            >
+          </div>
+        </div>
+
+        <!-- Quick questions -->
+        <div>
+          <div class="lbl">Quick Questions</div>
+          <div class="chips">
+            <div class="chip" data-q="Tell me about yourself">
+              About yourself
+            </div>
+            <div class="chip" data-q="What is your greatest weakness?">
+              Weakness
+            </div>
+            <div class="chip" data-q="Why do you want to work here?">
+              Why here
+            </div>
+            <div class="chip" data-q="Where do you see yourself in 5 years?">
+              5 years
+            </div>
+            <div class="chip" data-q="Tell me about a time you failed">
+              Failure
+            </div>
+            <div class="chip" data-q="What is your expected salary?">
+              Salary
+            </div>
+            <div class="chip" data-q="Design a URL shortener system">
+              System design
+            </div>
+            <div
+              class="chip"
+              data-q="Explain the difference between TCP and UDP"
+            >
+              TCP/UDP
+            </div>
+          </div>
+        </div>
+
+        <!-- Opacity -->
+        <div class="slider-row" style="margin-bottom: 20px">
+          <div class="lbl">Opacity</div>
+          <input
+            type="range"
+            id="opacitySlider"
+            min="15"
+            max="100"
+            value="96"
+          />
+          <span id="opacityVal">96%</span>
+        </div>
+      </div>
+
+      <!-- API Activity Log -->
+      <div id="api-log-bar">
+        <span id="api-log-label">API</span>
+        <input type="text" id="api-log" value="Waiting for request…" readonly />
+      </div>
+
+      <!-- Status bar -->
+      <div id="statusbar">
+        <span id="status">● READY</span>
+        <span class="shield">🛡 SCREEN CAPTURE PROTECTED</span>
+      </div>
+    </div>
+
+    <div id="cursor">📍</div>
+    <script type="module" src="renderer.js"></script>
+  </body>
+</html>
