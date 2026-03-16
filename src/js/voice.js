@@ -252,8 +252,8 @@ export async function transcribeAudio(
 
 export async function startMic(onFinish) {
   try {
-    const micSelect = document.getElementById("mic-select");
-    const selectedDeviceId = micSelect?.value;
+    const micSelectCustom = document.getElementById("mic-select-custom");
+    const selectedDeviceId = micSelectCustom?.getAttribute("data-value");
     const constraints = {
       audio: selectedDeviceId
         ? {
@@ -481,20 +481,38 @@ export async function refreshMicList() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const mics = devices.filter((d) => d.kind === "audioinput");
-    const micSelect = document.getElementById("mic-select");
-    if (!micSelect) return;
+    const micSelectCustom = document.getElementById("mic-select-custom");
+    if (!micSelectCustom) return;
 
-    const currentVal = micSelect.value;
-    micSelect.innerHTML = mics
+    const optionsContainer = micSelectCustom.querySelector(".options-container");
+    const selectedDisplay = micSelectCustom.querySelector(".selected-option");
+    
+    const currentVal = micSelectCustom.getAttribute("data-value");
+    
+    optionsContainer.innerHTML = mics
       .map(
         (m) =>
-          `<option value="${m.deviceId}" ${m.deviceId === currentVal ? "selected" : ""}>${m.label || "Unknown Mic"}</option>`,
+          `<div data-value="${m.deviceId}" class="${m.deviceId === currentVal ? "selected" : ""}">${m.label || "Unknown Mic"}</div>`,
       )
       .join("");
 
-    if (!micSelect.innerHTML) {
-      micSelect.innerHTML = '<option value="">No Mic Found</option>';
+    if (!optionsContainer.innerHTML) {
+      optionsContainer.innerHTML = '<div data-value="">No Mic Found</div>';
     }
+
+    // Add click handlers for new options
+    optionsContainer.querySelectorAll("div").forEach(div => {
+      div.onclick = (e) => {
+        e.stopPropagation();
+        const val = div.getAttribute("data-value");
+        const label = div.textContent;
+        selectedDisplay.textContent = label;
+        micSelectCustom.setAttribute("data-value", val);
+        localStorage.setItem("selectedDeviceId", val);
+        optionsContainer.classList.remove("show");
+      };
+    });
+
   } catch (err) {
     console.error("Error refreshing mic list:", err);
   }
