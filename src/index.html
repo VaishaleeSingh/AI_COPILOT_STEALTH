@@ -15,8 +15,8 @@
           AI COPILOT — STEALTH
         </div>
         <div class="win-controls">
-          <button class="wc" title="Minimize (Alt+Space)">−</button>
-          <button class="wc red" title="Hide (Alt+Space)">×</button>
+          <button class="wc">−</button>
+          <button class="wc red">×</button>
         </div>
       </div>
 
@@ -26,23 +26,21 @@
         <div>
           <div class="lbl">Voice Capture</div>
           <div class="voice-row improved">
-            <div class="capture-btns">
-              <button id="mic-btn" class="vbtn primary" title="Record My Voice">🎤 Mic</button>
-              <button id="sys-btn" class="vbtn secondary" title="Capture Interviewer Audio">🔊 Sys</button>
+            <div class="voice-control-group">
+              <button id="mic-btn" class="vbtn primary">🎤 Mic</button>
+              <button id="sys-btn" class="vbtn secondary">🔊 Sys</button>
+              <button id="auto-btn" class="vbtn-icon">⚡</button>
+              <button class="vbtn-icon v-clear">🗑</button>
             </div>
           
-            <div class="mic-source">
-              <select id="mic-select" class="mic-dropdown" title="Input Source">
-                <option value="">Default Mic</option>
-              </select>
+            <div class="mic-source" style="display: none;">
+              <div id="mic-select-custom" class="mic-dropdown-custom">
+                <div class="selected-option">Default Mic</div>
+                <div class="options-container"></div>
+              </div>
               <div id="volume-meter-container">
                 <div id="volume-meter-bar"></div>
               </div>
-            </div>
-          
-            <div class="action-btns">
-              <button id="auto-btn" class="vbtn-icon" title="Auto-detect questions">⚡</button>
-              <button class="vbtn-icon v-clear" title="Clear transcript">🗑</button>
             </div>
           </div>
           <div id="voice-status"></div>
@@ -58,20 +56,22 @@
         </div>
 
         <div class="tools-row">
-          <select id="lang-select" class="lang-sel" title="Execution Language">
-            <option value="cpp">C++</option>
-            <option value="python">Python</option>
-            <option value="java">Java</option>
-            <option value="javascript">JavaScript</option>
-            <option value="go">Go</option>
-          </select>
+          <div id="lang-select-custom" class="lang-sel-custom">
+            <div class="selected-option">C++</div>
+            <div class="options-container">
+              <div data-value="cpp">C++</div>
+              <div data-value="python">Python</div>
+              <div data-value="java">Java</div>
+              <div data-value="javascript">JavaScript</div>
+              <div data-value="go">Go</div>
+            </div>
+          </div>
 
           <div class="tool-group">
             <button
               id="clear-inputs-btn"
               class="vbtn-small"
               style="width: 36px; justify-content: center"
-              title="Clear all text boxes"
             >
               🗑
             </button>
@@ -79,7 +79,6 @@
               id="snip-btn"
               class="vbtn-small"
               style="width: 36px; justify-content: center"
-              title="Snip Text (OCR)"
             >
               ✂️
             </button>
@@ -87,7 +86,6 @@
               id="capture-image-btn"
               class="vbtn-small"
               style="width: 36px; justify-content: center; background-color: rgba(255,255,255,0.1);"
-              title="Capture Image"
             >
               📷
             </button>
@@ -102,7 +100,6 @@
               <button
                 class="copy-btn"
                 data-target="question"
-                title="Copy Question"
               >
                 📋 Copy
               </button>
@@ -158,7 +155,7 @@
         <div>
           <div class="lbl">
             Answer
-            <button class="copy-btn" data-target="answer" title="Copy Answer">
+            <button class="copy-btn" data-target="answer">
               📋 Copy
             </button>
           </div>

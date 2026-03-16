@@ -786,8 +786,8 @@ export async function executeCodeAgentFlow(q, ctx, KEYS) {
   const btn = document.getElementById("gen-btn");
   btn.disabled = true;
   const answerEl = document.getElementById("answer");
-  const langSelect = document.getElementById("lang-select");
-  const selectedLang = langSelect ? langSelect.value : "cpp";
+  const langSelect = document.getElementById("lang-select-custom");
+  const selectedLang = langSelect ? (langSelect.getAttribute("data-value") || "cpp") : "cpp";
 
   const langNames = {
     cpp: "C++",
