@@ -90,24 +90,9 @@ export function clearAll() {
 }
 
 export function typewrite(answerEl, text, onDone) {
-  answerEl.textContent = "";
-  const cursor = document.createElement("span");
-  cursor.className = "cursor";
-  let i = 0;
-  const speed = Math.max(8, Math.min(20, 2000 / text.length));
-  const tick = () => {
-    if (i < text.length) {
-      answerEl.textContent = text.slice(0, i + 1);
-      answerEl.appendChild(cursor);
-      answerEl.scrollTop = answerEl.scrollHeight;
-      i++;
-      setTimeout(tick, speed);
-    } else {
-      cursor.remove();
-      onDone?.();
-    }
-  };
-  tick();
+  answerEl.textContent = text;
+  answerEl.scrollTop = 0;
+  onDone?.();
 }
 
 export function escHtml(s) {

@@ -455,8 +455,8 @@ body {
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 11px;
-  min-height: 130px;
-  max-height: 200px;
+  height: 180px;
+  flex-shrink: 0;
   overflow-y: auto;
   font-size: 12px;
   line-height: 1.75;

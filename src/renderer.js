@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPTS } from "./js/prompts.js";
+import { SYSTEM_PROMPTS, RESUME } from "./js/prompts.js";
 import { executeCodeAgentFlow, tavilyAnswer, performOCR } from "./js/api.js";
 import {
   setQ,
@@ -358,6 +358,29 @@ function handleDictationResult(transcript, isFinal, speaker = "You") {
   }
 }
 
+// Detect if the question is asking for a self-introduction
+function isIntroductionQuestion(q) {
+  const lower = q.toLowerCase();
+  const patterns = [
+    "tell me about yourself",
+    "introduce yourself",
+    "tell us about yourself",
+    "walk me through your background",
+    "walk us through your background",
+    "give me a brief introduction",
+    "give us a brief introduction",
+    "can you introduce yourself",
+    "who are you",
+    "say something about yourself",
+    "tell me a little about yourself",
+    "brief intro",
+    "your introduction",
+    "self introduction",
+    "your background",
+  ];
+  return patterns.some((p) => lower.includes(p));
+}
+
 async function generate() {
   const isCodeMode = document
     .getElementById("code-mode-container")
@@ -402,17 +425,32 @@ async function generate() {
   let text = "";
   let usedFallback = false;
 
-  const userPrompt = ctx
-    ? `Candidate background: ${ctx}\n\nInterview question: "${q}"\n\nGive a strong spoken answer in 3-4 sentences.`
-    : `Interview question: "${q}"\n\nGive a strong spoken answer in 3-4 sentences.`;
+  // Auto-detect introduction questions and use resume-based prompt
+  const isIntro = isIntroductionQuestion(q);
+  const activeMode = isIntro ? "introduction" : currentMode;
+  const systemPrompt = SYSTEM_PROMPTS[activeMode] || SYSTEM_PROMPTS[currentMode];
 
-  // 0. Anthropic Claude API (highest priority, different format)
+  let userPrompt;
+  if (isIntro) {
+    userPrompt = `Here is my resume:\n${RESUME}\n\nInterview question: "${q}"\n\nUsing ONLY the resume above, give a confident, natural spoken introduction in 4-6 sentences.`;
+    setStatus("● GENERATING (Introduction)…", "rgba(130, 200, 255, 0.9)");
+  } else {
+    userPrompt = ctx
+      ? `Candidate background: ${ctx}\n\nInterview question: "${q}"\n\nGive a strong spoken answer in 3-4 sentences.`
+      : `Interview question: "${q}"\n\nGive a strong spoken answer in 3-4 sentences.`;
+  }
+
+  const maxTokens = isIntro ? 500 : 250;
+
+  // ── Build all provider promises and race them simultaneously ─────────────
+  const providers = [];
+
+  // Anthropic Claude
   const anthropicKey = KEYS.anthropicKey || "";
   if (anthropicKey) {
-    try {
-      const anthropicModel = KEYS.anthropicModel || "claude-sonnet-4-20250514";
-      setActiveAPI(`Calling Claude (${anthropicModel})…`, "rgba(180, 130, 255, 0.5)");
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const anthropicModel = KEYS.anthropicModel || "claude-haiku-4-20250514";
+    providers.push(
+      fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -421,115 +459,113 @@ async function generate() {
         },
         body: JSON.stringify({
           model: anthropicModel,
-          max_tokens: 400,
-          system: SYSTEM_PROMPTS[currentMode],
+          max_tokens: maxTokens,
+          system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
-          temperature: 0.7,
+          temperature: 0.5,
         }),
-      });
-      const data = await res.json();
-      if (res.ok && data.content?.[0]?.text) {
-        text = data.content[0].text;
-        setActiveAPI(`Claude (${anthropicModel})`, "rgba(180, 130, 255, 0.8)");
-      } else {
-        console.warn("Anthropic failed:", data.error?.message || `HTTP ${res.status}`);
-      }
-    } catch (e) {
-      console.error("Anthropic Generation Error:", e);
-    }
+      }).then(async (res) => {
+        const data = await res.json();
+        if (res.ok && data.content?.[0]?.text)
+          return { text: data.content[0].text, label: `Claude (${anthropicModel})`, color: "rgba(180, 130, 255, 0.8)" };
+        throw new Error(data.error?.message || `Claude HTTP ${res.status}`);
+      })
+    );
   }
 
-  // 1. Custom provider (priority) > OpenRouter > Groq
-  let llmUrl, llmModel, llmHeaders;
+  // Custom LLM / OpenRouter / Groq
   const customBase = KEYS.customLlmBaseUrl || "";
   const openrouterKey = KEYS.openrouterKey || "";
   const groqKey = KEYS.groqKey || "";
 
+  let llmUrl, llmModel, llmHeaders, llmLabel, llmColor;
   if (customBase) {
     llmUrl = `${customBase.replace(/\/+$/, "")}/chat/completions`;
-    llmModel = KEYS.customLlmModel || "gpt-4o";
+    llmModel = KEYS.customLlmModel || "gpt-4o-mini";
     llmHeaders = { "Content-Type": "application/json" };
     if (KEYS.customLlmApiKey) llmHeaders["Authorization"] = `Bearer ${KEYS.customLlmApiKey}`;
-    if (KEYS.customLlmHeaderName && KEYS.customLlmHeaderValue) {
+    if (KEYS.customLlmHeaderName && KEYS.customLlmHeaderValue)
       llmHeaders[KEYS.customLlmHeaderName] = KEYS.customLlmHeaderValue;
-    }
+    llmLabel = `Custom (${llmModel})`; llmColor = "rgba(100, 200, 255, 0.8)";
   } else if (openrouterKey) {
     llmUrl = "https://openrouter.ai/api/v1/chat/completions";
-    llmModel = KEYS.openrouterModel || "deepseek/deepseek-r1";
+    llmModel = KEYS.openrouterModel || "google/gemini-flash-1.5";
     llmHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${openrouterKey}` };
+    llmLabel = `OpenRouter (${llmModel})`; llmColor = "rgba(100, 200, 255, 0.8)";
   } else if (groqKey) {
     llmUrl = "https://api.groq.com/openai/v1/chat/completions";
-    llmModel = "moonshotai/kimi-k2-instruct-0905";
+    llmModel = "llama-3.3-70b-versatile"; // fastest high-quality Groq model
     llmHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${groqKey}` };
+    llmLabel = `Groq (${llmModel})`; llmColor = "rgba(255, 180, 100, 0.8)";
   }
 
-  if (!text && llmUrl) {
-    try {
-      const res = await fetch(llmUrl, {
+  if (llmUrl) {
+    providers.push(
+      fetch(llmUrl, {
         method: "POST",
         headers: llmHeaders,
         body: JSON.stringify({
           model: llmModel,
           messages: [
-            { role: "system", content: SYSTEM_PROMPTS[currentMode] },
+            { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
-          temperature: 0.7,
-          max_tokens: 400,
+          temperature: 0.5,
+          max_tokens: maxTokens,
         }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        text = data.choices?.[0]?.message?.content || "";
-        if (text) {
-          const providerName = customBase ? "Custom" : openrouterKey ? "OpenRouter" : "Groq";
-          setActiveAPI(`${providerName} (${llmModel})`, providerName === "Groq" ? "rgba(255, 180, 100, 0.8)" : "rgba(100, 200, 255, 0.8)");
-        }
-      }
-    } catch (e) {
-      console.error("LLM Generation Error:", e);
-    }
+      }).then(async (res) => {
+        const data = await res.json();
+        const t = data.choices?.[0]?.message?.content || "";
+        if (res.ok && t) return { text: t, label: llmLabel, color: llmColor };
+        throw new Error(`LLM HTTP ${res.status}`);
+      })
+    );
   }
 
-  // 2. Gemini
+  // Gemini flash-lite (very fast)
   const geminiKey = KEYS.geminiKey || "";
-  if (!text && geminiKey) {
-    try {
-      setStatus("● FALLBACK: GENERATING (Gemini)…", "rgba(255,200,100,0.8)");
-      const res = await fetch(
+  if (geminiKey) {
+    providers.push(
+      fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: SYSTEM_PROMPTS[currentMode] }],
-            },
+            system_instruction: { parts: [{ text: systemPrompt }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-            generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.5 },
           }),
-        },
-      );
-      const data = await res.json();
-      if (!data.error) {
-        text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        if (text) setActiveAPI("Gemini (flash-lite)", "rgba(100, 220, 180, 0.8)");
-        usedFallback = true;
-      }
-    } catch (e) {
-      console.error("Gemini Generation Error:", e);
+        }
+      ).then(async (res) => {
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        const t = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (t) return { text: t, label: "Gemini (flash-lite)", color: "rgba(100, 220, 180, 0.8)" };
+        throw new Error("Gemini: empty response");
+      })
+    );
+  }
+
+  // ── Race: use whichever provider responds first ──────────────────────────
+  if (providers.length > 0) {
+    try {
+      const winner = await Promise.any(providers);
+      text = winner.text;
+      setActiveAPI(winner.label, winner.color);
+    } catch {
+      console.warn("All LLM providers failed, falling back to Tavily");
     }
   }
 
-  // 3. Tavily
+  // Tavily — only if every LLM provider failed
   if (!text) {
     try {
       setStatus("● SEARCHING (Tavily)…", "rgba(120,200,255,0.8)");
       text = await tavilyAnswer(q, ctx, KEYS);
-      if (text) setActiveAPI("Tavily (search)", "rgba(120, 200, 255, 0.8)");
-      usedFallback = true;
+      if (text) { setActiveAPI("Tavily (search)", "rgba(120, 200, 255, 0.8)"); usedFallback = true; }
     } catch (err) {
-      answerEl.innerHTML = `<span style="color:rgba(255,100,100,0.7)">Both Gemini and Tavily failed: ${escHtml(err.message)}</span>`;
+      answerEl.innerHTML = `<span style="color:rgba(255,100,100,0.7)">All providers failed: ${escHtml(err.message)}</span>`;
       setStatus("● ERROR", "rgba(255,100,100,0.8)");
       btn.disabled = false;
       return;
