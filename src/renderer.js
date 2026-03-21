@@ -65,14 +65,22 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("auto-btn").onclick = toggleAutoAnswer;
   document.querySelector(".v-clear").onclick = clearTranscript;
 
-  const micSelect = document.getElementById("mic-select");
-  if (micSelect) {
+  const micSelectCustom = document.getElementById("mic-select-custom");
+  if (micSelectCustom) {
     refreshMicList().then(() => {
       const savedMic = localStorage.getItem("selectedDeviceId");
-      if (savedMic) micSelect.value = savedMic;
+      if (savedMic) {
+        const option = micSelectCustom.querySelector(`.options-container div[data-value="${savedMic}"]`);
+        if (option) {
+          micSelectCustom.querySelector(".selected-option").textContent = option.textContent;
+          micSelectCustom.setAttribute("data-value", savedMic);
+        }
+      }
     });
-    micSelect.onchange = () => {
-      localStorage.setItem("selectedDeviceId", micSelect.value);
+
+    micSelectCustom.onclick = (e) => {
+      e.stopPropagation();
+      micSelectCustom.querySelector(".options-container").classList.toggle("show");
     };
   }
 
@@ -131,6 +139,30 @@ document.addEventListener("DOMContentLoaded", () => {
       chip.onclick = () => setQ(q);
     }
   });
+
+  // Custom Dropdowns (Global Click to Close)
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".options-container").forEach((el) => el.classList.remove("show"));
+  });
+
+  // Language Custom Dropdown
+  const langSelectCustom = document.getElementById("lang-select-custom");
+  if (langSelectCustom) {
+    langSelectCustom.onclick = (e) => {
+      e.stopPropagation();
+      langSelectCustom.querySelector(".options-container").classList.toggle("show");
+    };
+
+    langSelectCustom.querySelectorAll(".options-container div").forEach((opt) => {
+      opt.onclick = (e) => {
+        e.stopPropagation();
+        const val = opt.getAttribute("data-value");
+        langSelectCustom.querySelector(".selected-option").textContent = opt.textContent;
+        langSelectCustom.setAttribute("data-value", val);
+        langSelectCustom.querySelector(".options-container").classList.remove("show");
+      };
+    });
+  }
 
   // Tab Switcher
   document.querySelectorAll(".tab-btn").forEach((btn) => {

@@ -6,33 +6,49 @@ An AI-powered interview assistant designed for absolute privacy. It is **complet
 
 ## ⚡ Features
 
-### 🧠 Intelligence Engine (Groq & Gemini)
+### 🧠 Intelligence Engine (Multi-Provider Support)
 
-- **Multi-tiered AI**: Prioritizes **Groq** (Llama 3.3 / Kimi) for lightning-fast answers, with **Gemini 1.5/2.0** and **Tavily Search** as robust fallbacks.
-- **Execute Code**: Detects coding questions and uses an Agentic flow to write, test, and verify solutions via RapidAPI/OneCompiler.
-- **Voice Dictation**: Real-time transcription of your voice and system audio to capture questions as they are being asked.
+- **Priority Routing**: Automatically routes queries through a multi-tiered fallback system:
+  1. **Anthropic Claude**: Using `claude-sonnet-4-20250514` for high-reasoning answers.
+  2. **Custom LLM / OpenRouter**: Support for any OpenAI-compatible endpoint (DeepSeek-R1, GPT-4o, etc.).
+  3. **Groq**: Lightning-fast answers via `moonshotai/kimi-k2-instruct-0905`.
+  4. **Gemini 2.0 Flash Lite**: Robust fallback for reliable, fast processing.
+  5. **Tavily Search**: Real-time web search for the latest technical info or company-specific data.
 
-### ✂️ Screen Snipping & Image Capture
+### 🤖 Agentic Code Execution Flow (3-Agent System)
+
+Detects coding questions and triggers a sophisticated iterative verification loop:
+1. **Agent 1 (Test Generator)**: Analyzes the problem and generates 10 unique test cases (edge cases, typical cases, and problem examples). It writes it's own reference solution to verify these test outputs before proceeding.
+2. **Agent 2 (Optimal Coder)**: Receives verified test cases and writes the most time-efficient solution (O(N), O(log N)) using the best-known algorithms for the specific problem.
+3. **Agent 3 (The Validator)**: Executes the code in a sandbox (Judge0 / OneCompiler). If any tests fail, it sends the specific "Expected vs Got" error back to Agent 2 for an automatic fix. Repeats until all tests pass.
+
+### 🎤 Advanced Voice & Audio Capture (Dual-Mode)
+
+- **System Audio Capture**: Directly capture and transcribe system audio (the interviewer's voice) from Zoom, Teams, or Meet without external patches.
+- **Voice Dictation**: Real-time transcription of your own speech for follow-up questions.
+- **Live Transcript**: Displays a scrollable conversation transcript with speaker identification ("You" vs "Interviewer").
+- **Auto-Answer**: Intelligently triggers AI generation when a question is detected in the live transcript.
+
+### ✂️ Screen Snipping & Image Intelligence
 
 - **Dual-Mode Snipping**:
-  - **✂️ Snip (OCR)**: Drag over text, code, or diagrams; extracted text is automatically appended to your interview query.
-  - **📷 Image Capture**: Drag over any area to copy the exact image to your system clipboard instantly.
-- **Image Paste Support**: Paste any image from your clipboard into the question/code boxes. The app will generate a native thumbnail preview for visual reference.
-- **Fragment Appending**: Capture different parts of a long question sequentially; the app intelligently appends them for a complete query.
-- **Auto-Hide Capture**: The app automatically hides during screen capture to ensure it never appears in its own results or blocks your view.
+  - **✂️ Snip (OCR)**: Drag over text, code, or diagrams; extracted text is automatically appended to your query box.
+  - **📷 Image Capture**: Drag to copy an area to the clipboard. The app generates a **Native Thumbnail Preview** inside the interface.
+- **Image Paste Support**: Paste any image from the clipboard into the question or code boxes. Thumbnail previews allow for visual reference of complex diagrams.
+- **Fragment Appending**: Sequential captures are handled intelligently, appending new text to existing queries.
 
 ### 🛡️ Privacy & Stealth (Stealth Mode)
 
-- **Overlay Protection**: Uses `setContentProtection(true)` to ensure the app window is a "black box" to screen-sharing and recording software.
-- **📍 Protected Protected Cursor**: Replaces the system mouse pointer with a custom, capture-protected arrow. **Others cannot see your mouse movements or scrolling**.
-- **Auto-Hide Capture**: The app automatically hides during screen capture to ensure it never appears in its own results or blocks your view.
+- **Content Protection**: Uses `setContentProtection(true)`—the app appears as a black box to all screen-sharing and recording software.
+- **📍 Protected Protected Cursor**: Replaces the system pointer with a custom, capture-protected arrow. Your mouse movements and scrolls remain invisible to observers.
+- **Automatic Hiding**: The app hides itself during the snipping process to ensure it never blocks capture or appears in OCR results.
 
 ### 🎨 Premium UI/UX
 
-- **Modern Aesthetics**: Glassmorphism design with a dark, premium theme.
-- **Always-on-Top**: Stays visible above all interview windows.
-- **Opacity Control**: Easily adjust transparency to blend into your environment.
-- **Auto-Generate**: Automatically triggered answers as soon as text is captured or dictated.
+- **Glassmorphism Design**: A sleek, dark, premium interface with subtle animations.
+- **Tabbed Workflow**: Seamlessly switch between **General Interview** (3-4 sentence spoken answers) and **Code Execution** (Agentic flow) modes.
+- **Live Status Feed**: Real-time updates of agent activity (e.g., "Agent 2: Optimizing logic…").
+- **Always-on-Top & Opacity**: Stays visible over interview windows with adjustable transparency to blend into your setup.
 
 ---
 
@@ -53,7 +69,7 @@ An AI-powered interview assistant designed for absolute privacy. It is **complet
 ### Prerequisites
 
 - Node.js installed.
-- API Keys for Groq, Gemini, Tavily, and RapidAPI (add to `.env`).
+- API Keys for the providers you wish to use (add to `.env`).
 
 ### Installation
 
@@ -75,18 +91,18 @@ Packaged app will be in `out/interview-app-win32-x64`.
 ## 📁 Project Structure
 
 ```
-interview-app/
+CheatChat/
 ├── src/
-│   ├── main.js       ← Electron main process (Stealth & IPC)
-│   ├── preload.js    ← Secure bridge for UI
-│   ├── renderer.js   ← App logic & events
-│   ├── snipper.html  ← Snipping overlay
-│   ├── snipper.js    ← Drag & Draw logic
+│   ├── main.js           ← Electron main process (Stealth & IPC)
+│   ├── preload.js        ← Secure bridge for UI
+│   ├── renderer.js       ← App logic, event bindings & UI flow
+│   ├── snipper.js        ← Drag & Draw logic for screen capture
+│   ├── styles.css        ← Glassmorphism & premium UI theme
 │   └── js/
-│       ├── api.js    ← AI (Groq/Gemini/OCR) logic
-│       ├── voice.js  ← Audio transcription
-│       └── ui.js     ← Interface utilities
-├── .env              ← API Secret keys
-└── README.md         ← You are here
+│       ├── api.js        ← 3-Agent Flow & Multi-LLM logic
+│       ├── voice.js      ← Dual-mode audio transcription
+│       ├── ui.js         ← UI utilities & effects
+│       └── prompts.js    ← Specialized system instructions
+├── .env                  ← API Secret keys
+└── README.md             ← Documentation
 ```
-# CheatChat
